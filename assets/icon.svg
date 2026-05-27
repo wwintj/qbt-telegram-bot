@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="#1f87e8"/>
+  <circle cx="256" cy="256" r="144" fill="white" fill-opacity="0.94"/>
+  <path d="M155 247L365 160L318 355L250 291L202 337Z" fill="#1f87e8"/>
+  <path d="M250 291L318 355L286 271L365 160Z" fill="#1368be"/>
+  <text x="155" y="430" font-size="72" fill="white" font-family="Arial, Helvetica, sans-serif" font-weight="700">qB</text>
+</svg>
