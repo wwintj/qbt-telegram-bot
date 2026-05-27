@@ -4,6 +4,14 @@ set -eu
 APP_DIR="${APP_DIR:-$(pwd)}"
 ENV_FILE="${APP_DIR}/.env"
 
+# Prefer reading from the real terminal.
+# This prevents infinite empty input loops when users run installers through a pipe.
+if [ -r /dev/tty ]; then
+  INPUT_DEVICE="/dev/tty"
+else
+  INPUT_DEVICE="/dev/stdin"
+fi
+
 read_input() {
   prompt="$1"
   default="${2:-}"
@@ -14,7 +22,9 @@ read_input() {
     printf "%s\n> " "$prompt" >&2
   fi
 
-  read -r value || true
+  if ! IFS= read -r value < "$INPUT_DEVICE"; then
+    value=""
+  fi
 
   if [ -z "$value" ]; then
     value="$default"
@@ -50,7 +60,10 @@ yes_no() {
   fi
 
   printf "%s %s\n> " "$prompt" "$suffix" >&2
-  read -r value || true
+
+  if ! IFS= read -r value < "$INPUT_DEVICE"; then
+    value=""
+  fi
 
   if [ -z "$value" ]; then
     value="$default"
