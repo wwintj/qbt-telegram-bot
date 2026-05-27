@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.png" width="120" alt="qBittorrent Telegram Bot icon">
+  <img src="assets/icon.svg" width="120" alt="qBittorrent Telegram Bot icon">
 </p>
 
 # qBittorrent Telegram Bot
