@@ -27,6 +27,11 @@ else
   exit 1
 fi
 
+if ! command -v tar >/dev/null 2>&1; then
+  echo "ERROR: tar command not found."
+  exit 1
+fi
+
 TMP_DIR="$(mktemp -d)"
 cleanup() {
   rm -rf "$TMP_DIR"
