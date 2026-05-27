@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>qbt-telegram-bot</Name>
+  <Repository>qbt-telegram-bot:latest</Repository>
+  <Registry>https://github.com/wwintj/qbt-telegram-bot</Registry>
+  <Network>host</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/wwintj/qbt-telegram-bot/issues</Support>
+  <Project>https://github.com/wwintj/qbt-telegram-bot</Project>
+  <Overview>Telegram bot for controlling qBittorrent through the qBittorrent Web API.</Overview>
+  <Category>Downloaders: Tools:</Category>
+  <WebUI/>
+  <TemplateURL>https://raw.githubusercontent.com/wwintj/qbt-telegram-bot/main/unraid/qbt-telegram-bot.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/wwintj/qbt-telegram-bot/main/assets/icon.svg</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Telegram Token" Target="TELEGRAM_TOKEN" Default="" Mode="" Description="Telegram Bot Token from BotFather" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="Telegram API Base" Target="TELEGRAM_API_BASE" Default="https://api.telegram.org" Mode="" Description="Official Telegram API or local Telegram Bot API endpoint" Type="Variable" Display="advanced" Required="true" Mask="false"/>
+  <Config Name="Admin Chat IDs" Target="ADMIN_CHAT_IDS" Default="" Mode="" Description="Allowed Telegram chat IDs, comma-separated. Leave empty for first run and use /id." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="qBittorrent URL" Target="QBT_URL" Default="http://127.0.0.1:8080" Mode="" Description="qBittorrent WebUI/API URL" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="qBittorrent Username" Target="QBT_USERNAME" Default="admin" Mode="" Description="qBittorrent username" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="qBittorrent Password" Target="QBT_PASSWORD" Default="" Mode="" Description="qBittorrent password" Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="qBittorrent Save Path" Target="QBT_SAVE_PATH" Default="" Mode="" Description="Optional qBittorrent-side download path" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="qBittorrent Category" Target="QBT_CATEGORY" Default="telegram" Mode="" Description="Category for new tasks" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="qBittorrent Tags" Target="QBT_TAGS" Default="telegram" Mode="" Description="Tags for new tasks" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Add Stopped" Target="ADD_STOPPED" Default="false" Mode="" Description="true means add tasks stopped/paused" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Use Local Telegram API" Target="USE_LOCAL_TELEGRAM_API" Default="false" Mode="" Description="Set true if using local telegram-bot-api server" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Local Telegram File Root" Target="LOCAL_TELEGRAM_FILE_ROOT" Default="/var/lib/telegram-bot-api" Mode="" Description="Container-side local Telegram file root when using local Bot API" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Temporary Folder" Target="/tmp/telegram_qb" Default="/mnt/user/appdata/qbt-telegram-bot/tmp" Mode="rw" Description="Temporary folder for torrent files" Type="Path" Display="advanced" Required="false" Mask="false"/>
+</Container>
