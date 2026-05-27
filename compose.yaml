@@ -1,0 +1,9 @@
+services:
+  qbt-telegram-bot:
+    build: .
+    container_name: qbt-telegram-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./tmp:/tmp/telegram_qb
