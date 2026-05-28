@@ -3,21 +3,21 @@ set -eu
 
 APP_DIR="${APP_DIR:-$(pwd)}"
 REFRESH_URL="${REFRESH_URL:-https://raw.githubusercontent.com/wwintj/qbt-telegram-bot/main/scripts/refresh.sh}"
+TMP_REFRESH="$(mktemp)"
 
-cd "$APP_DIR"
-mkdir -p scripts
+cleanup() {
+  rm -f "$TMP_REFRESH"
+}
+trap cleanup EXIT INT TERM
 
-if [ ! -f "scripts/refresh.sh" ]; then
-  echo "scripts/refresh.sh not found. Downloading it from GitHub..."
-  if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$REFRESH_URL" -o scripts/refresh.sh
-  elif command -v wget >/dev/null 2>&1; then
-    wget -qO scripts/refresh.sh "$REFRESH_URL"
-  else
-    echo "ERROR: curl or wget is required."
-    exit 1
-  fi
-  chmod +x scripts/refresh.sh 2>/dev/null || true
+if command -v curl >/dev/null 2>&1; then
+  curl -fsSL "$REFRESH_URL" -o "$TMP_REFRESH"
+elif command -v wget >/dev/null 2>&1; then
+  wget -qO "$TMP_REFRESH" "$REFRESH_URL"
+else
+  echo "ERROR: curl or wget is required."
+  exit 1
 fi
 
-sh scripts/refresh.sh
+chmod +x "$TMP_REFRESH" 2>/dev/null || true
+APP_DIR="$APP_DIR" exec sh "$TMP_REFRESH"
