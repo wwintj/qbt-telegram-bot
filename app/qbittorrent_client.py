@@ -78,7 +78,7 @@ class QBittorrentClient:
 
         return data
 
-    def add_url(self, url_text: str):
+    def add_url(self, url_text: str) -> dict:
         session = self.session()
         data = self._add_common_fields()
         data["urls"] = url_text
@@ -93,7 +93,8 @@ class QBittorrentClient:
             timeout=60,
         )
 
-        if response.status_code not in (200, 204):
+        # qBittorrent may return 202 Accepted when the add request is accepted for async processing.
+        if response.status_code not in (200, 202, 204):
             raise RuntimeError(
                 f"Add URL failed: HTTP {response.status_code}, response: {response.text[:300]}"
             )
@@ -101,7 +102,26 @@ class QBittorrentClient:
         if "Fails." in response.text:
             raise RuntimeError(f"Add URL failed: {response.text}")
 
-    def add_torrent_file(self, file_path: str):
+        result = {
+            "status_code": response.status_code,
+            "pending": response.status_code == 202,
+            "raw": response.text,
+        }
+
+        try:
+            payload = response.json()
+            result.update({
+                "success_count": payload.get("success_count"),
+                "failure_count": payload.get("failure_count"),
+                "pending_count": payload.get("pending_count"),
+                "added_torrent_ids": payload.get("added_torrent_ids"),
+            })
+        except Exception:
+            pass
+
+        return result
+
+    def add_torrent_file(self, file_path: str) -> dict:
         session = self.session()
         path = Path(file_path)
 
@@ -130,13 +150,19 @@ class QBittorrentClient:
                 timeout=120,
             )
 
-        if response.status_code not in (200, 204):
+        if response.status_code not in (200, 202, 204):
             raise RuntimeError(
                 f"Add torrent failed: HTTP {response.status_code}, response: {response.text[:300]}"
             )
 
         if "Fails." in response.text:
             raise RuntimeError(f"Add torrent failed: {response.text}")
+
+        return {
+            "status_code": response.status_code,
+            "pending": response.status_code == 202,
+            "raw": response.text,
+        }
 
     def torrents(self) -> list[dict]:
         session = self.session()
