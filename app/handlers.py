@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import traceback
+from urllib.parse import urlparse
 
 from app import formatters as fmt
 
@@ -11,17 +12,29 @@ def is_admin(chat_id, admin_chat_ids: set[str]) -> bool:
     return str(chat_id) in admin_chat_ids
 
 
-def extract_links(text: str) -> list[str]:
-    links = []
+def is_probably_torrent_url(url: str) -> bool:
+    lower = url.lower().split("?", 1)[0]
+    return lower.startswith("magnet:") or lower.endswith(".torrent")
+
+
+def extract_links(text: str) -> tuple[list[str], list[str]]:
+    torrent_links = []
+    unsupported_links = []
+
     for line in (text or "").replace("\r", "\n").split("\n"):
         item = line.strip()
         if not item:
             continue
+
         if item.startswith("magnet:"):
-            links.append(item)
+            torrent_links.append(item)
         elif item.startswith("http://") or item.startswith("https://"):
-            links.append(item)
-    return links
+            if is_probably_torrent_url(item):
+                torrent_links.append(item)
+            else:
+                unsupported_links.append(item)
+
+    return torrent_links, unsupported_links
 
 
 class MessageHandler:
@@ -43,7 +56,7 @@ class MessageHandler:
             return
 
         if not is_admin(chat_id, self.config.admin_chat_ids):
-            self.send(chat_id, fmt.panel("⛔ 访问被拒绝", ["你不在授权列表中，无法控制 qBittorrent。"]))
+            self.send(chat_id, fmt.panel("⛔ 访问被拒绝", ["你不在授权列表中，无法控制 qBittorrent。"] ))
             return
 
         text = (msg.get("text") or msg.get("caption") or "").strip()
@@ -68,9 +81,22 @@ class MessageHandler:
             self.handle_list(chat_id)
             return
 
-        links = extract_links(text)
-        if links:
-            self.handle_links(chat_id, links)
+        torrent_links, unsupported_links = extract_links(text)
+        if torrent_links:
+            self.handle_links(chat_id, torrent_links, unsupported_links)
+            return
+        if unsupported_links:
+            self.send(chat_id, fmt.panel("⚠️ 链接类型不支持", [
+                "当前 Bot 只负责添加 BT 下载任务：",
+                "1. magnet 磁力链接",
+                "2. .torrent 种子文件",
+                "3. 以 .torrent 结尾的下载链接",
+                "",
+                "你发送的是普通文件直链，不是 BT 下载链接：",
+                fmt.short_name(unsupported_links[0], 90),
+                "",
+                "例如 .iso、.zip、.exe 这类普通 HTTP 文件不适合通过 qBittorrent 的 torrents/add 接口添加。",
+            ]))
             return
 
         doc = msg.get("document")
@@ -78,12 +104,12 @@ class MessageHandler:
             self.handle_document(chat_id, doc)
             return
 
-        self.send(chat_id, fmt.panel("🤔 未识别的内容", ["你可以发送：", "1. magnet 链接", "2. .torrent 文件", "3. .torrent 下载链接", "", "也可以点击底部按钮查看状态或任务列表。"]))
+        self.send(chat_id, fmt.panel("🤔 未识别的内容", ["你可以发送：", "1. magnet 链接", "2. .torrent 文件", "3. .torrent 下载链接", "", "也可以点击底部按钮查看状态或任务列表。"] ))
 
     def handle_test(self, chat_id):
         try:
             version = self.qbt.version()
-            self.send(chat_id, fmt.panel("✅ qBittorrent 连接正常", [f"🌐 地址：{self.config.qbt_url}", f"👤 用户：{self.config.qbt_username}", f"🧩 版本：{version}", "📡 状态：Web API 可用"]))
+            self.send(chat_id, fmt.panel("✅ qBittorrent 连接正常", [f"🌐 地址：{self.config.qbt_url}", f"👤 用户：{self.config.qbt_username}", f"🧩 版本：{version}", "📡 状态：Web API 可用"] ))
         except Exception as e:
             self.send(chat_id, fmt.panel("❌ qBittorrent 连接失败", [f"错误信息：{e}"]))
 
@@ -99,20 +125,35 @@ class MessageHandler:
         except Exception as e:
             self.send(chat_id, fmt.panel("❌ 获取任务列表失败", [f"错误信息：{e}"]))
 
-    def handle_links(self, chat_id, links: list[str]):
+    def handle_links(self, chat_id, links: list[str], unsupported_links: list[str] | None = None):
         ok_count = 0
+        pending_count = 0
         errors = []
+
         for link in links:
             try:
-                self.qbt.add_url(link)
-                ok_count += 1
+                result = self.qbt.add_url(link)
+                if result.get("pending"):
+                    pending_count += 1
+                else:
+                    ok_count += 1
             except Exception as e:
                 errors.append(f"{fmt.short_name(link, 80)}\n错误：{e}")
 
-        if ok_count and not errors:
-            self.send(chat_id, fmt.panel("✅ 下载任务已提交", [f"成功添加：{ok_count} 个任务", f"分类：{self.config.qbt_category}", f"标签：{self.config.qbt_tags}", "", "你可以点击底部「📊 状态」查看进度。"] ))
-        elif ok_count:
-            self.send(chat_id, fmt.panel("⚠️ 下载任务部分提交成功", [f"成功：{ok_count}", f"失败：{len(errors)}", "", *errors[:3]]))
+        lines = []
+        if ok_count:
+            lines.append(f"成功添加：{ok_count} 个任务")
+        if pending_count:
+            lines.append(f"已提交等待处理：{pending_count} 个任务")
+        if unsupported_links:
+            lines.append(f"已忽略普通文件直链：{len(unsupported_links)} 个")
+        lines.extend([f"分类：{self.config.qbt_category}", f"标签：{self.config.qbt_tags}", "", "你可以稍后点击底部「📊 状态」查看进度。"])
+
+        if (ok_count or pending_count) and not errors:
+            title = "✅ 下载任务已提交" if ok_count else "⏳ 下载任务已提交，等待 qBittorrent 处理"
+            self.send(chat_id, fmt.panel(title, lines))
+        elif ok_count or pending_count:
+            self.send(chat_id, fmt.panel("⚠️ 下载任务部分提交成功", [*lines, "", f"失败：{len(errors)}", *errors[:3]]))
         else:
             self.send(chat_id, fmt.panel("❌ 下载任务提交失败", errors[:3] or ["未知错误"]))
 
@@ -126,9 +167,10 @@ class MessageHandler:
             return
 
         try:
-            self.send(chat_id, fmt.panel("📥 已收到种子文件", [f"文件名：{file_name}", f"大小：{fmt.fmt_size(file_size)}", "", "正在提交到 qBittorrent..."]))
+            self.send(chat_id, fmt.panel("📥 已收到种子文件", [f"文件名：{file_name}", f"大小：{fmt.fmt_size(file_size)}", "", "正在提交到 qBittorrent..."] ))
             local_file = self.telegram.resolve_file_path(doc["file_id"], file_name)
-            self.qbt.add_torrent_file(local_file)
-            self.send(chat_id, fmt.panel("✅ 种子任务已提交", [f"文件名：{file_name}", f"分类：{self.config.qbt_category}", f"标签：{self.config.qbt_tags}", "", "你可以点击底部「📊 状态」查看进度。"] ))
+            result = self.qbt.add_torrent_file(local_file)
+            title = "⏳ 种子任务已提交，等待 qBittorrent 处理" if result.get("pending") else "✅ 种子任务已提交"
+            self.send(chat_id, fmt.panel(title, [f"文件名：{file_name}", f"分类：{self.config.qbt_category}", f"标签：{self.config.qbt_tags}", "", "你可以点击底部「📊 状态」查看进度。"] ))
         except Exception as e:
             self.send(chat_id, fmt.panel("❌ 种子任务提交失败", [f"文件名：{file_name}", f"错误信息：{e}"]))
