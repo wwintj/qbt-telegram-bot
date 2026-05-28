@@ -103,6 +103,8 @@ class TelegramClient:
         print(f"Telegram file_path: {file_path}", flush=True)
 
         # Local Telegram Bot API may return an absolute local filesystem path.
+        # In that case, the qbt-telegram-bot container must have the local Bot API
+        # data directory mounted at the same container path.
         if self.use_local_api and os.path.isabs(file_path):
             candidates = [file_path]
 
@@ -116,7 +118,15 @@ class TelegramClient:
                 if os.path.exists(candidate):
                     return candidate
 
-        # Official Telegram Bot API path, or fallback for local API.
+            raise RuntimeError(
+                "本地 Telegram Bot API 返回了本地文件路径，但 qbt-telegram-bot 容器无法读取该文件。\n"
+                f"Telegram 返回路径：{file_path}\n"
+                "请确认启动 qbt-telegram-bot 时已经挂载本地 Telegram Bot API 数据目录，例如：\n"
+                "-v /mnt/user/appdata/telegram-bot-api:/var/lib/telegram-bot-api:ro\n"
+                "如果你的 telegram-bot-api 容器使用了不同的宿主机目录，请用 docker inspect telegram-bot-api 查看实际挂载路径。"
+            )
+
+        # Official Telegram Bot API path, or relative path from local API.
         tmp_dir = Path(tempfile.gettempdir()) / "telegram_qb"
         tmp_dir.mkdir(parents=True, exist_ok=True)
 
